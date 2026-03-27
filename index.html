@@ -17,77 +17,100 @@
     <div class="instruction">Pasa el ratón para aplicar distorsión hiperbólica (Fisheye)</div>
     <div id="viz"></div>
 
-    <script>
-        const data = {
-            name: "RAÍZ",
-            children: Array.from({length: 8}, (_, i) => ({
-                name: "Grupo " + (i + 1),
-                children: Array.from({length: 10}, (_, j) => ({ name: "Sub " + i + "." + j }))
-            }))
-        };
+<script>
+    // Estructura de 3 niveles: PEC 2 -> Grupos -> Técnicas -> Atributos (Nietos)
+    const data = {
+        name: "PEC 2",
+        children: [
+            {
+                name: "Grupo I",
+                children: [
+                    { name: "Dot Density", children: [{name: "Puntos"}, {name: "Mapas"}] },
+                    { name: "Bar Chart", children: [{name: "Barras"}, {name: "Ejes"}] }
+                ]
+            },
+            {
+                name: "Grupo II",
+                children: [
+                    { name: "Radar Chart", children: [{name: "Normalización"}, {name: "Polígonos"}] },
+                    { name: "Heatmap", children: [{name: "Matriz"}, {name: "Color"}] }
+                ]
+            },
+            {
+                name: "Grupo III",
+                children: [
+                    { name: "Hyperbolic", children: [{name: "Fisheye"}, {name: "Poincaré"}] },
+                    { name: "Radial Tree", children: [{name: "Circular"}, {name: "Foco"}] }
+                ]
+            }
+        ]
+    };
 
-        const width = window.innerWidth, height = window.innerHeight;
-        const centerX = width / 2, centerY = height / 2;
+    const width = window.innerWidth, height = window.innerHeight;
+    const centerX = width / 2, centerY = height / 2;
 
-        const svg = d3.select("#viz").append("svg");
-        const g = svg.append("g").attr("transform", `translate(${centerX},${centerY})`);
-        const tree = d3.tree().size([2 * Math.PI, 250]);
-        const root = d3.hierarchy(data);
-        tree(root);
+    const svg = d3.select("#viz").append("svg");
+    const g = svg.append("g").attr("transform", `translate(${centerX},${centerY})`);
 
-        //Guardamos las posiciones originales
+    // Aumentamos un poco el radio (350) para que quepan los nietos sin amontonarse
+    const tree = d3.tree().size([2 * Math.PI, 300]); 
+    const root = d3.hierarchy(data);
+    tree(root);
+
+    root.descendants().forEach(d => {
+        d.origX = d.y * Math.cos(d.x - Math.PI / 2);
+        d.origY = d.y * Math.sin(d.x - Math.PI / 2);
+        d.currentX = d.origX;
+        d.currentY = d.origY;
+    });
+
+    const links = g.selectAll(".link")
+        .data(root.links())
+        .enter().append("line")
+        .attr("class", "link");
+
+    const nodes = g.selectAll(".node")
+        .data(root.descendants())
+        .enter().append("g")
+        .attr("class", "node");
+
+    nodes.append("circle").attr("r", d => d.children ? 6 : 3); // Círculo más grande si tiene hijos
+    nodes.append("text")
+        .attr("dy", d => d.children ? -12 : 12) // Texto arriba para padres, abajo para nietos
+        .attr("text-anchor", "middle")
+        .text(d => d.data.name);
+
+    // Motor distorsionador (Mantenemos la lógica de antes)
+    svg.on("mousemove", (event) => {
+        const [mX, mY] = d3.pointer(event);
+        const focusX = mX - centerX;
+        const focusY = mY - centerY;
+
+        const distortion = 2.5; // Ajustado para que sea fluido con 3 niveles
+        const radius = 250;     // Radio de influencia aumentado
+
         root.descendants().forEach(d => {
-            d.origX = d.y * Math.cos(d.x - Math.PI / 2);
-            d.origY = d.y * Math.sin(d.x - Math.PI / 2);
-            d.currentX = d.origX;
-            d.currentY = d.origY;
+            const dx = d.origX - focusX;
+            const dy = d.origY - focusY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < radius) {
+                const t = Math.sin((dist / radius) * (Math.PI / 2));
+                const factor = Math.pow(t, 1/distortion);
+                d.currentX = focusX + (dx / dist) * radius * factor;
+                d.currentY = focusY + (dy / dist) * radius * factor;
+            } else {
+                d.currentX = d.origX;
+                d.currentY = d.origY;
+            }
         });
 
-        const links = g.selectAll(".link")
-            .data(root.links())
-            .enter().append("line")
-            .attr("class", "link");
-
-        const nodes = g.selectAll(".node")
-            .data(root.descendants())
-            .enter().append("g")
-            .attr("class", "node");
-
-        nodes.append("circle").attr("r", 4);
-        nodes.append("text").attr("dy", -10).attr("text-anchor", "middle").text(d => d.data.name);
-
-        // motor distorsionador
-        svg.on("mousemove", (event) => {
-            const [mX, mY] = d3.pointer(event);
-            const focusX = mX - centerX;
-            const focusY = mY - centerY;
-
-            const distortion = 3; // Nivel de deformación hiperbólica
-            const radius = 200;    // Radio de influencia
-
-            root.descendants().forEach(d => {
-                const dx = d.origX - focusX;
-                const dy = d.origY - focusY;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                if (dist < radius) {
-                    const t = Math.sin((dist / radius) * (Math.PI / 2));
-                    const factor = Math.pow(t, 1/distortion);
-                    d.currentX = focusX + (dx / dist) * radius * factor;
-                    d.currentY = focusY + (dy / dist) * radius * factor;
-                } else {
-                    d.currentX = d.origX;
-                    d.currentY = d.origY;
-                }
-            });
-
-            // Actualizar posiciones visuales
-            nodes.attr("transform", d => `translate(${d.currentX},${d.currentY})`);
-            links.attr("x1", d => d.source.currentX)
-                 .attr("y1", d => d.source.currentY)
-                 .attr("x2", d => d.target.currentX)
-                 .attr("y2", d => d.target.currentY);
-        });
-    </script>
+        nodes.attr("transform", d => `translate(${d.currentX},${d.currentY})`);
+        links.attr("x1", d => d.source.currentX)
+             .attr("y1", d => d.source.currentY)
+                .attr("x2", d => d.target.currentX)
+                .attr("y2", d => d.target.currentY);
+    });
+</script>
 </body>
 </html>

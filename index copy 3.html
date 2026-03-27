@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Hyperbolic Tree - PEC 2</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { margin: 0; background: #1a1a1a; color: white; font-family: sans-serif; overflow: hidden; }
+        svg { width: 100vw; height: 100vh; }
+        .link { fill: none; stroke: #444; stroke-width: 1.5px; }
+        .node circle { fill: #00ffcc; stroke: #fff; stroke-width: 1px; }
+        .node text { font-size: 10px; fill: #eee; pointer-events: none; }
+        .instruction { position: absolute; top: 10px; left: 10px; color: #888; }
+    </style>
+</head>
+<body>
+    <div class="instruction">Pasa el ratón para aplicar distorsión hiperbólica (Fisheye)</div>
+    <div id="viz"></div>
+
+    <script>
+        const data = {
+            name: "RAÍZ",
+            children: Array.from({length: 8}, (_, i) => ({
+                name: "Grupo " + (i + 1),
+                children: Array.from({length: 10}, (_, j) => ({ name: "Sub " + i + "." + j }))
+            }))
+        };
+
+        const width = window.innerWidth, height = window.innerHeight;
+        const centerX = width / 2, centerY = height / 2;
+
+        const svg = d3.select("#viz").append("svg");
+        const g = svg.append("g").attr("transform", `translate(${centerX},${centerY})`);
+        const tree = d3.tree().size([2 * Math.PI, 250]);
+        const root = d3.hierarchy(data);
+        tree(root);
+
+        //Guardamos las posiciones originales
+        root.descendants().forEach(d => {
+            d.origX = d.y * Math.cos(d.x - Math.PI / 2);
+            d.origY = d.y * Math.sin(d.x - Math.PI / 2);
+            d.currentX = d.origX;
+            d.currentY = d.origY;
+        });
+
+        const links = g.selectAll(".link")
+            .data(root.links())
+            .enter().append("line")
+            .attr("class", "link");
+
+        const nodes = g.selectAll(".node")
+            .data(root.descendants())
+            .enter().append("g")
+            .attr("class", "node");
+
+        nodes.append("circle").attr("r", 4);
+        nodes.append("text").attr("dy", -10).attr("text-anchor", "middle").text(d => d.data.name);
+
+        // motor distorsionador
+        svg.on("mousemove", (event) => {
+            const [mX, mY] = d3.pointer(event);
+            const focusX = mX - centerX;
+            const focusY = mY - centerY;
+
+            const distortion = 3; // Nivel de deformación hiperbólica
+            const radius = 200;    // Radio de influencia
+
+            root.descendants().forEach(d => {
+                const dx = d.origX - focusX;
+                const dy = d.origY - focusY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < radius) {
+                    const t = Math.sin((dist / radius) * (Math.PI / 2));
+                    const factor = Math.pow(t, 1/distortion);
+                    d.currentX = focusX + (dx / dist) * radius * factor;
+                    d.currentY = focusY + (dy / dist) * radius * factor;
+                } else {
+                    d.currentX = d.origX;
+                    d.currentY = d.origY;
+                }
+            });
+
+            // Actualizar posiciones visuales
+            nodes.attr("transform", d => `translate(${d.currentX},${d.currentY})`);
+            links.attr("x1", d => d.source.currentX)
+                 .attr("y1", d => d.source.currentY)
+                 .attr("x2", d => d.target.currentX)
+                 .attr("y2", d => d.target.currentY);
+        });
+    </script>
+</body>
+</html>
