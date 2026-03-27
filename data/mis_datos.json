@@ -1,0 +1,52 @@
+{
+  "name": "PEC 2: Visualización",
+  "children": [
+    {
+      "name": "TÉCNICAS",
+      "children": [
+        {
+          "name": "Grupo I: Básicas",
+          "children": [
+            { "name": "Dot Density Map" },
+            { "name": "Bar Charts" }
+          ]
+        },
+        {
+          "name": "Grupo II: Específicas",
+          "children": [
+            { "name": "Radar Charts" },
+            { "name": "Parallel Coordinates" }
+          ]
+        },
+        {
+          "name": "Grupo III: Complejas",
+          "children": [
+            { "name": "Hyperbolic Trees",
+              "children": [
+                {"name": "Disco de Poincaré"},
+                {"name": "Transformación Möbius"},
+                {"name": "Enfoque + Contexto"}
+              ]
+            },
+            { "name": "Circle Packing" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HERRAMIENTAS",
+      "children": [
+        {"name": "RAWGraphs"},
+        {"name": "Flourish"},
+        {"name": "D3.js"}
+      ]
+    },
+    {
+      "name": "DATOS",
+      "children": [
+        {"name": "OCDE (Better Life)"},
+        {"name": "Airbnb (Inside)"}
+      ]
+    }
+  ]
+}
