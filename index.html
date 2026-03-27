@@ -20,7 +20,7 @@
     <script>
         const data = {
             name: "RAÍZ",
-            children: Array.from({length: 8}, (_, i) => ({
+            children: Array.from({length: 15}, (_, i) => ({
                 name: "Grupo " + (i + 1),
                 children: Array.from({length: 5}, (_, j) => ({ name: "Sub " + i + "." + j }))
             }))
@@ -31,7 +31,6 @@
 
         const svg = d3.select("#viz").append("svg");
         const g = svg.append("g").attr("transform", `translate(${centerX},${centerY})`);
-
         const tree = d3.tree().size([2 * Math.PI, 250]);
         const root = d3.hierarchy(data);
         tree(root);
